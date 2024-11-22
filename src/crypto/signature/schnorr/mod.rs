@@ -100,11 +100,12 @@ where
             // e := H(salt || pubkey || r || msg);
             let mut hash_input = Vec::new();
             if parameters.salt != None {
-                hash_input.extend_from_slice(&parameters.salt.unwrap());
+               // hash_input.extend_from_slice(&parameters.salt.unwrap());
+               parameters.salt.serialize_compressed(&mut hash_input)?;
             }
-            hash_input.extend_from_slice(&to_bytes(sk.public_key)?);
-            hash_input.extend_from_slice(&to_bytes(prover_commitment)?);
-            hash_input.extend_from_slice(message);
+            sk.public_key.serialize_compressed(&mut hash_input)?;
+            prover_commitment.serialize_compressed(&mut hash_input)?;
+            message.serialize_compressed(&mut hash_input)?;
 
             let hash_digest = Blake2s::digest(&hash_input);
             assert!(hash_digest.len() >= 32);
@@ -148,14 +149,14 @@ where
         claimed_prover_commitment += &public_key_times_verifier_challenge;
         let claimed_prover_commitment = claimed_prover_commitment.into_affine();
 
-        // e = H(salt, kG, msg)
+        // e := H(salt || pubkey || r || msg)
         let mut hash_input = Vec::new();
         if parameters.salt != None {
             hash_input.extend_from_slice(&parameters.salt.unwrap());
         }
-        hash_input.extend_from_slice(&to_bytes(pk.clone())?);
-        hash_input.extend_from_slice(&to_bytes(claimed_prover_commitment)?);
-        hash_input.extend_from_slice(message);
+        pk.serialize_compressed(&mut hash_input)?;
+        claimed_prover_commitment.serialize_compressed(&mut hash_input)?;
+        message.serialize_compressed(&mut hash_input)?;
 
         // cast the hash output to get e
         let obtained_verifier_challenge = &Blake2s::digest(&hash_input)[..];
@@ -164,10 +165,4 @@ where
         // provided in the signature
         Ok(verifier_challenge == obtained_verifier_challenge)
     }
-}
-
-fn to_bytes<T: CanonicalSerialize>(x: T) -> Result<Vec<u8>, Error> {
-    let mut encoded = Vec::new();
-    x.serialize_compressed(&mut encoded)?;
-    Ok(encoded)
 }
