@@ -5,50 +5,43 @@
 
 use super::SignatureScheme;
 use ark_crypto_primitives::Error;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_std::ops::*;
+use ark_ec::CurveGroup;
 use ark_ff::{
-    bytes::ToBytes,
     fields::PrimeField,
-    to_bytes, UniformRand,
+    UniformRand,
 };
-use ark_std::io::{Result as IoResult, Write};
+use ark_serialize::CanonicalSerialize;
 use ark_std::rand::Rng;
 use ark_std::{hash::Hash, marker::PhantomData, vec::Vec};
 use blake2::Blake2s;
 use digest::Digest;
 
-pub struct Schnorr<C: ProjectiveCurve> {
+pub struct Schnorr<C: CurveGroup> {
     _group: PhantomData<C>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Parameters<C: ProjectiveCurve> {
+pub struct Parameters<C: CurveGroup> {
     pub generator: C::Affine,
     pub salt: Option<[u8; 32]>,
 }
 
-pub type PublicKey<C> = <C as ProjectiveCurve>::Affine;
+pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
-#[derive(Clone, Default, Debug)]
-pub struct SecretKey<C: ProjectiveCurve> {
+#[derive(Clone, Default, Debug, CanonicalSerialize)]
+pub struct SecretKey<C: CurveGroup> {
     pub secret_key: C::ScalarField,
     pub public_key: PublicKey<C>,
 }
 
-impl<C: ProjectiveCurve> ToBytes for SecretKey<C> {
-    #[inline]
-    fn write<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.secret_key.write(writer)
-    }
-}
-
-#[derive(Clone, Default, Debug)]
-pub struct Signature<C: ProjectiveCurve> {
+#[derive(Clone, Default, Debug, CanonicalSerialize)]
+pub struct Signature<C: CurveGroup> {
     pub prover_response: C::ScalarField,
     pub verifier_challenge: [u8; 32],
 }
 
-impl<C: ProjectiveCurve + Hash> SignatureScheme for Schnorr<C>
+impl<C: CurveGroup + Hash> SignatureScheme for Schnorr<C>
 where
     C::ScalarField: PrimeField,
 {
@@ -61,7 +54,7 @@ where
         // let setup_time = start_timer!(|| "SchnorrSig::Setup");
 
         let salt = None;
-        let generator = C::prime_subgroup_generator().into();
+        let generator = C::generator().into();
 
         // end_timer!(setup_time);
         Ok(Parameters { generator, salt })
@@ -109,8 +102,8 @@ where
             if parameters.salt != None {
                 hash_input.extend_from_slice(&parameters.salt.unwrap());
             }
-            hash_input.extend_from_slice(&to_bytes![sk.public_key]?);
-            hash_input.extend_from_slice(&to_bytes![prover_commitment]?);
+            hash_input.extend_from_slice(&to_bytes(sk.public_key)?);
+            hash_input.extend_from_slice(&to_bytes(prover_commitment)?);
             hash_input.extend_from_slice(message);
 
             let hash_digest = Blake2s::digest(&hash_input);
@@ -160,8 +153,8 @@ where
         if parameters.salt != None {
             hash_input.extend_from_slice(&parameters.salt.unwrap());
         }
-        hash_input.extend_from_slice(&to_bytes![pk]?);
-        hash_input.extend_from_slice(&to_bytes![claimed_prover_commitment]?);
+        hash_input.extend_from_slice(&to_bytes(pk.clone())?);
+        hash_input.extend_from_slice(&to_bytes(claimed_prover_commitment)?);
         hash_input.extend_from_slice(message);
 
         // cast the hash output to get e
@@ -173,3 +166,8 @@ where
     }
 }
 
+fn to_bytes<T: CanonicalSerialize>(x: T) -> Result<Vec<u8>, Error> {
+    let mut encoded = Vec::new();
+    x.serialize_compressed(&mut encoded)?;
+    Ok(encoded)
+}

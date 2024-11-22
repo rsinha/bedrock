@@ -1,5 +1,5 @@
 use ark_crypto_primitives::Error;
-use ark_ff::bytes::ToBytes;
+use ark_serialize::CanonicalSerialize;
 use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 
@@ -8,9 +8,9 @@ pub mod schnorr;
 #[allow(dead_code)]
 pub trait SignatureScheme {
     type Parameters: Clone + Send + Sync;
-    type PublicKey: ToBytes + Hash + Eq + Clone + Default + Send + Sync;
-    type SecretKey: ToBytes + Clone + Default;
-    type Signature: Clone + Default + Send + Sync;
+    type PublicKey: CanonicalSerialize + Hash + Eq + Clone + Default + Send + Sync;
+    type SecretKey: CanonicalSerialize + Clone + Default;
+    type Signature: CanonicalSerialize + Clone + Default + Send + Sync;
 
     fn setup<R: Rng>(rng: &mut R) -> Result<Self::Parameters, Error>;
 
