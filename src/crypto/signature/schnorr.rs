@@ -100,7 +100,6 @@ where
             // e := H(salt || pubkey || r || msg);
             let mut hash_input = Vec::new();
             if parameters.salt != None {
-               // hash_input.extend_from_slice(&parameters.salt.unwrap());
                parameters.salt.serialize_compressed(&mut hash_input)?;
             }
             sk.public_key.serialize_compressed(&mut hash_input)?;
