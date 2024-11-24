@@ -38,6 +38,7 @@ pub trait SignatureScheme {
 mod test {
     use crate::crypto::signature::{schnorr, *};
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
+    use ark_secp256k1::Projective as Secp256k1;
     use ark_std::test_rng;
 
     fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
@@ -57,10 +58,20 @@ mod test {
     }
 
     #[test]
-    fn schnorr_signature_test() {
+    fn schnorr_signature_test_jubjub() {
         let message = "Hi, I am a Schnorr signature!";
         sign_and_verify::<schnorr::Schnorr<JubJub>>(message.as_bytes());
         failed_verification::<schnorr::Schnorr<JubJub>>(
+            message.as_bytes(),
+            "Bad message".as_bytes(),
+        );
+    }
+
+    #[test]
+    fn schnorr_signature_test_secp256k1() {
+        let message = "Hi, I am a Schnorr signature!";
+        sign_and_verify::<schnorr::Schnorr<Secp256k1>>(message.as_bytes());
+        failed_verification::<schnorr::Schnorr<Secp256k1>>(
             message.as_bytes(),
             "Bad message".as_bytes(),
         );
