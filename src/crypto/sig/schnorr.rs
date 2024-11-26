@@ -1,12 +1,10 @@
-//! Here we implement the Schnorr signature scheme
-//! over the prime order subgroup of the JubJub curve
-//! (defined in zCash sapling). This curve is also known
-//! as ed-on-bls12-381 in arkworks.
+//! Here we implement the Schnorr signature scheme over the prime order subgroup of the JubJub curve
+//! (defined in zCash sapling). This curve is also known as ed-on-bls12-381 in arkworks.
 
 use super::SignatureScheme;
 use ark_crypto_primitives::Error;
 use ark_std::ops::*;
-use ark_ec::CurveGroup;
+use ark_ec::{CurveGroup, PrimeGroup};
 use ark_ff::{
     fields::PrimeField,
     UniformRand,
@@ -29,11 +27,7 @@ pub struct Parameters<C: CurveGroup> {
 
 pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
-#[derive(Clone, Default, Debug, CanonicalSerialize)]
-pub struct SecretKey<C: CurveGroup> {
-    pub secret_key: C::ScalarField,
-    pub public_key: PublicKey<C>,
-}
+pub type SecretKey<C> = <C as PrimeGroup>::ScalarField;
 
 #[derive(Clone, Default, Debug, CanonicalSerialize)]
 pub struct Signature<C: CurveGroup> {
@@ -74,10 +68,7 @@ where
         // end_timer!(keygen_time);
         Ok((
             public_key,
-            SecretKey {
-                secret_key,
-                public_key,
-            },
+            secret_key
         ))
     }
 
@@ -96,13 +87,14 @@ where
             // This is the prover's first msg in the Sigma protocol.
             let prover_commitment = parameters.generator.mul(random_scalar).into_affine();
 
+            let public_key = parameters.generator.mul(sk).into();
             // Hash everything to get verifier challenge.
             // e := H(salt || pubkey || r || msg);
             let mut hash_input = Vec::new();
             if parameters.salt != None {
                parameters.salt.serialize_compressed(&mut hash_input)?;
             }
-            sk.public_key.serialize_compressed(&mut hash_input)?;
+            public_key.serialize_compressed(&mut hash_input)?;
             prover_commitment.serialize_compressed(&mut hash_input)?;
             message.serialize_compressed(&mut hash_input)?;
 
@@ -117,7 +109,7 @@ where
         let verifier_challenge_fe = C::ScalarField::from_le_bytes_mod_order(&verifier_challenge);
 
         // k - xe;
-        let prover_response = random_scalar - (verifier_challenge_fe * sk.secret_key);
+        let prover_response = random_scalar - (verifier_challenge_fe * sk);
         let signature = Signature {
             prover_response,
             verifier_challenge,

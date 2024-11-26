@@ -36,7 +36,7 @@ pub trait SignatureScheme {
 
 #[cfg(test)]
 mod test {
-    use crate::crypto::signature::{schnorr, *};
+    use crate::crypto::sig::{schnorr, *};
     use ark_ed_on_bls12_381::EdwardsProjective as JubJub;
     use ark_secp256k1::Projective as Secp256k1;
     use ark_std::test_rng;
