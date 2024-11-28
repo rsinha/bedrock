@@ -7,15 +7,17 @@ license = "MIT/Apache-2.0"
 categories = ["cryptography"]
 
 [dependencies]
-ark-ff = { version = "^0.5.0", default-features = false }
-ark-ec = { version = "^0.5.0", default-features = false }
-ark-ed-on-bls12-381 = { version = "^0.5.0", default-features = false }
-ark-bls12-381 = { version = "^0.5.0", default-features = false }
-ark-secp256k1 = { version = "^0.5.0", default-features = false }
-ark-poly = { version = "^0.5.0", default-features = false }
-ark-std = { version = "^0.5.0", default-features = false }
-ark-serialize = { version = "^0.5.0", default-features = false }
-ark-crypto-primitives = { version = "^0.5.0", default-features = true }
+ark-ff = { version = "^0.4.0", default-features = false }
+ark-ec = { version = "^0.4.0", default-features = false }
+ark-ed-on-bls12-381 = { version = "^0.4.0", default-features = false }
+ark-bls12-381 = { version = "0.4.0", features = ["curve"], default-features = false }
+ark-secp256k1 = { version = "^0.4.0", default-features = false }
+ark-poly = { version = "^0.4.0", default-features = false }
+ark-std = { version = "^0.4.0", default-features = false }
+ark-serialize = { version = "^0.4.0", default-features = false }
+ark-crypto-primitives = { version = "^0.4.0", default-features = true }
 
+hmac = { version = "0.12.1", default-features = false }
+sha2 = { version = "0.10.6", default-features = false }
 blake2 = { version = "0.9" }
 digest = "0.9"

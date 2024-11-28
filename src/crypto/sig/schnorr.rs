@@ -4,7 +4,7 @@
 use super::SignatureScheme;
 use ark_crypto_primitives::Error;
 use ark_std::ops::*;
-use ark_ec::{CurveGroup, PrimeGroup};
+use ark_ec::{CurveConfig, CurveGroup};
 use ark_ff::{
     fields::PrimeField,
     UniformRand,
@@ -27,7 +27,7 @@ pub struct Parameters<C: CurveGroup> {
 
 pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
-pub type SecretKey<C> = <C as PrimeGroup>::ScalarField;
+pub type SecretKey<C> = <<C as CurveGroup>::Config as CurveConfig>::ScalarField;
 
 #[derive(Clone, Default, Debug, CanonicalSerialize)]
 pub struct Signature<C: CurveGroup> {
@@ -101,7 +101,7 @@ where
             let hash_digest = Blake2s::digest(&hash_input);
             assert!(hash_digest.len() >= 32);
             let mut verifier_challenge = [0u8; 32];
-            verifier_challenge.copy_from_slice(&hash_digest);
+            verifier_challenge.copy_from_slice(&hash_digest.as_slice());
 
             (random_scalar, verifier_challenge)
         };

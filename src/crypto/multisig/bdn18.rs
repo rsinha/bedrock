@@ -8,7 +8,7 @@
 use super::MultiSigScheme;
 use ark_crypto_primitives::Error;
 use ark_std::{Zero, ops::*};
-use ark_ec::{AffineRepr, PrimeGroup, CurveGroup};
+use ark_ec::{AffineRepr, CurveConfig, CurveGroup};
 use ark_ff::{
     fields::PrimeField,
     UniformRand,
@@ -30,7 +30,7 @@ pub struct Parameters<C: CurveGroup> {
 
 pub type PublicKey<C> = <C as CurveGroup>::Affine;
 
-pub type SecretKey<C> = <C as PrimeGroup>::ScalarField;
+pub type SecretKey<C> = <<C as CurveGroup>::Config as CurveConfig>::ScalarField;
 
 pub type AggregatePublicKey<C> = <C as CurveGroup>::Affine;
 
