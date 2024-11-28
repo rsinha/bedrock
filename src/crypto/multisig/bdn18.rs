@@ -339,7 +339,7 @@ fn compute_nonce_commitment_hash<C: CurveGroup>(nonce_commitment: &C::Affine) ->
 
     assert!(hash_digest.len() >= 32);
     let mut hash_commitment = [0u8; 32];
-    hash_commitment.copy_from_slice(&hash_digest);
+    hash_commitment.copy_from_slice(&hash_digest.as_slice());
 
     hash_commitment
 }
@@ -355,7 +355,7 @@ fn compute_challenge_hash<C: CurveGroup>(pk: &C::Affine, r: &C::Affine, msg: &[u
 
     assert!(hash_digest.len() >= 32);
     let mut verifier_challenge = [0u8; 32];
-    verifier_challenge.copy_from_slice(&hash_digest);
+    verifier_challenge.copy_from_slice(&hash_digest.as_slice());
 
     verifier_challenge
 }
