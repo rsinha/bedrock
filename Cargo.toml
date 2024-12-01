@@ -21,3 +21,5 @@ hmac = { version = "0.12.1", default-features = false }
 sha2 = { version = "0.10.6", default-features = false }
 blake2 = { version = "0.9" }
 digest = "0.9"
+rand = "*"
+rand_chacha = "*"
