@@ -101,7 +101,7 @@ impl PpssPcheme for JKKX16
         Ok((state, input))
     }
 
-    fn server_process_keygen_request<R: Rng>(
+    fn server_process_keygen_request(
         pp: &Self::Parameters,
         seed: &[u8; 32],
         client_id: &[u8],
@@ -189,7 +189,7 @@ impl PpssPcheme for JKKX16
         Ok((state, input))
     }
 
-    fn server_process_reconstruct_request<R: Rng>(
+    fn server_process_reconstruct_request(
         pp: &Self::Parameters,
         seed: &[u8; 32],
         client_id: &[u8],
@@ -210,12 +210,11 @@ impl PpssPcheme for JKKX16
         Ok(prf_output)
     }
 
-    fn client_reconstruct<R: Rng>(
+    fn client_reconstruct(
         pp: &Self::Parameters,
         state: &Self::ClientState,
         server_responses: &[(Self::PublicKey, Self::PrfOutput)],
         ciphertext: &Self::Ciphertext,
-        rng: &mut R,
     ) -> Result<Self::SecretKey, Error> {
         
         let mut shares = Vec::new();
@@ -305,23 +304,4 @@ fn hash_to_fr(affine_inputs: &[G1Affine], scalar_inputs: &[Fr], bytearray_inputs
     trimmed_hash_digest.copy_from_slice(&hash_digest.as_slice());
     
     Ok(Fr::from_le_bytes_mod_order(&trimmed_hash_digest))
-}
-
-fn interpolate<F: Field>(points: &[(F, F)], x: &F) -> F {
-    let xs = points.iter().map(|(x, _)| *x).collect::<Vec<F>>();
-    let ys = points.iter().map(|(_, y)| *y).collect::<Vec<F>>();
-
-    let λs: Vec<F> = (0..xs.len()).map(|i| {
-        // each lagrange coefficient is computed with respect to x = 0,
-        // since that's where we are embedding the secret in our entire
-        // construction. So the ith coefficient is w.r.t. xs[i].
-        crate::crypto::ppss::lagrange::lagrange_coefficient(&xs, i, x)
-    }).collect();
-
-    // the reconstructed secret is a weighted sum of ys, 
-    // with the lagrange coefficients as weights
-    let secret = λs.iter().zip(ys.iter())
-        .fold(F::zero(), |acc, (&λ_i, &y_i)| { acc + λ_i * y_i });
-
-    secret
 }
