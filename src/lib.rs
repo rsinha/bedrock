@@ -1,4 +1,4 @@
-mod crypto;
+pub mod crypto;
 
 #[cfg(test)]
 mod tests {
