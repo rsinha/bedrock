@@ -1,6 +1,5 @@
 use ark_crypto_primitives::Error;
 use ark_serialize::CanonicalSerialize;
-use ark_std::hash::Hash;
 use ark_std::rand::Rng;
 
 pub mod jkkx16;
@@ -10,7 +9,6 @@ mod lagrange;
 #[allow(dead_code)]
 pub trait PpssPcheme {
     type Parameters: Clone + Send + Sync;
-    type PublicKey: CanonicalSerialize + Hash + Eq + Clone + Default + Send + Sync;
     type SecretKey: CanonicalSerialize + Clone + Default;
     type PrfInput: CanonicalSerialize + Clone + Default + Send + Sync;
     type PrfOutput: CanonicalSerialize + Clone + Default + Send + Sync;
@@ -35,13 +33,13 @@ pub trait PpssPcheme {
         seed: &[u8; 32],
         client_id: &[u8],
         input: &Self::PrfInput,
-    ) -> Result<(Self::PublicKey, Self::PrfOutput), Error>;
+    ) -> Result<Self::PrfOutput, Error>;
 
     /// Performs the client-side keygen, using the servers' responses.
     fn client_keygen<R: Rng>(
         pp: &Self::Parameters,
         client_state: &Self::ClientState,
-        server_responses: &[(Self::PublicKey, Self::PrfOutput)],
+        server_responses: &[Self::PrfOutput],
         num_servers: usize,
         threshold: usize,
         rng: &mut R,
@@ -64,7 +62,7 @@ pub trait PpssPcheme {
     fn client_reconstruct(
         pp: &Self::Parameters,
         state: &Self::ClientState,
-        server_responses: &[(Self::PublicKey, Self::PrfOutput)],
+        server_responses: &[Self::PrfOutput],
         ciphertext: &Self::Ciphertext,
     ) -> Result<Self::SecretKey, Error>;
 }
@@ -87,11 +85,11 @@ mod test {
         let (client_state, prf_input) = JKKX16::client_generate_keygen_request(
             &pp, client_id, pin.as_bytes(), rng
         ).unwrap();
-        let (pk, prf_output) = JKKX16::server_process_keygen_request(
+        let prf_output = JKKX16::server_process_keygen_request(
             &pp, &server_seed, client_id, &prf_input
         ).unwrap();
         let (key, ciphertext) = JKKX16::client_keygen(
-            &pp, &client_state, &[(pk, prf_output)], 1, 1, rng
+            &pp, &client_state, &[prf_output], 1, 1, rng
         ).unwrap();
 
         let (client_state, prf_input) = JKKX16::client_generate_reconstruct_request(
@@ -101,7 +99,7 @@ mod test {
             &pp, &server_seed, client_id, &prf_input
         ).unwrap();
         let reconstructed_key = JKKX16::client_reconstruct(
-            &pp, &client_state, &[(pk, prf_output)], &ciphertext
+            &pp, &client_state, &[prf_output], &ciphertext
         ).unwrap();
 
         assert_eq!(key, reconstructed_key);
@@ -121,17 +119,17 @@ mod test {
 
         let (client_state, prf_input) = JKKX16::client_generate_keygen_request(&pp, client_id, pin.as_bytes(), rng).unwrap();
 
-        let (pk1, prf_out1) = JKKX16::server_process_keygen_request(&pp, &seed1, client_id, &prf_input).unwrap();
-        let (pk2, prf_out2) = JKKX16::server_process_keygen_request(&pp, &seed2, client_id, &prf_input).unwrap();
-        let (pk3, prf_out3) = JKKX16::server_process_keygen_request(&pp, &seed3, client_id, &prf_input).unwrap();
+        let prf_out1 = JKKX16::server_process_keygen_request(&pp, &seed1, client_id, &prf_input).unwrap();
+        let prf_out2 = JKKX16::server_process_keygen_request(&pp, &seed2, client_id, &prf_input).unwrap();
+        let prf_out3 = JKKX16::server_process_keygen_request(&pp, &seed3, client_id, &prf_input).unwrap();
         
-        let (key, ctxt) = JKKX16::client_keygen(&pp, &client_state, &[(pk1, prf_out1), (pk2, prf_out2), (pk3, prf_out3)], 3, 3, rng).unwrap();
+        let (key, ctxt) = JKKX16::client_keygen(&pp, &client_state, &[prf_out1, prf_out2, prf_out3], 3, 3, rng).unwrap();
 
         let prf_out1 = JKKX16::server_process_reconstruct_request(&pp, &seed1, client_id, &prf_input).unwrap();
         let prf_out2 = JKKX16::server_process_reconstruct_request(&pp, &seed2, client_id, &prf_input).unwrap();
         let prf_out3 = JKKX16::server_process_reconstruct_request(&pp, &seed3, client_id, &prf_input).unwrap();
 
-        let reconstructed_key = JKKX16::client_reconstruct(&pp, &client_state, &[(pk1, prf_out1), (pk2, prf_out2), (pk3, prf_out3)], &ctxt).unwrap();
+        let reconstructed_key = JKKX16::client_reconstruct(&pp, &client_state, &[prf_out1, prf_out2, prf_out3], &ctxt).unwrap();
 
         assert_eq!(key, reconstructed_key);
     }

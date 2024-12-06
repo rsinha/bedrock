@@ -4,7 +4,7 @@
 use super::PpssPcheme;
 use ark_crypto_primitives::Error;
 use ark_std::ops::*;
-use ark_serialize::CanonicalSerialize;
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use ark_std::rand::Rng;
 use ark_std::{Zero, hash::Hash, marker::PhantomData, vec::Vec};
 
@@ -31,24 +31,23 @@ pub struct Parameters<C: CurveGroup> {
     pub generator: C::Affine,
 }
 
-pub type PublicKey<C> = <C as CurveGroup>::Affine;
-
 pub type SecretKey = [u8; 16];
 
-#[derive(Clone, Default, Debug, CanonicalSerialize)]
+#[derive(Clone, Default, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Ciphertext<C: CurveGroup> {
     encrypted_shares: Vec<(C::ScalarField, C::ScalarField)>,
     hash: C::ScalarField, 
 }
 
-#[derive(Clone, Default, Debug, CanonicalSerialize)]
+#[derive(Clone, Default, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PrfInput<C: CurveGroup> {
     pub blinded_prf_input: C::Affine,
     pub client_id: Vec<u8>,
 }
 
-#[derive(Clone, Default, Debug, CanonicalSerialize)]
+#[derive(Clone, Default, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PrfOutput<C: CurveGroup> {
+    pub public_key: C::Affine,
     pub blinded_prf_output: C::Affine,
 }
 
@@ -69,7 +68,6 @@ enum HashDomainSeparator {
 impl PpssPcheme for JKKX16
 {
     type Parameters = Parameters<G1Projective>;
-    type PublicKey = PublicKey<G1Projective>;
     type SecretKey = SecretKey;
     type PrfInput = PrfInput<G1Projective>;
     type PrfOutput = PrfOutput<G1Projective>;
@@ -105,14 +103,14 @@ impl PpssPcheme for JKKX16
         seed: &[u8; 32],
         client_id: &[u8],
         input: &Self::PrfInput,
-    ) -> Result<(Self::PublicKey, Self::PrfOutput), Error> {
+    ) -> Result<Self::PrfOutput, Error> {
         evaluate_prf(pp, seed, client_id, input)
     }
 
     fn client_keygen<R: Rng>(
         pp: &Self::Parameters,
         state: &Self::ClientState,
-        server_responses: &[(Self::PublicKey, Self::PrfOutput)],
+        server_responses: &[Self::PrfOutput],
         num_servers: usize,
         threshold: usize,
         rng: &mut R,
@@ -122,7 +120,7 @@ impl PpssPcheme for JKKX16
         let shares = sss::share(secret, threshold, num_servers);
 
         let mut encrypted_shares = Vec::new();
-        for (i, (server_pk, server_output)) in server_responses.iter().enumerate() {
+        for (i, server_output) in server_responses.iter().enumerate() {
             let prf_output: G1Affine = server_output.blinded_prf_output.mul(&state.blind_scalar.inverse().unwrap()).into();
             // e := H(password || prf_output);
             let mask_i = hash_to_fr(
@@ -183,19 +181,18 @@ impl PpssPcheme for JKKX16
         client_id: &[u8],
         input: &Self::PrfInput,
     ) -> Result<Self::PrfOutput, Error> {
-        let (pk, prf_eval) = evaluate_prf(pp, seed, client_id, input)?;
-        Ok(prf_eval)
+        Ok(evaluate_prf(pp, seed, client_id, input)?)
     }
 
     fn client_reconstruct(
         pp: &Self::Parameters,
         state: &Self::ClientState,
-        server_responses: &[(Self::PublicKey, Self::PrfOutput)],
+        server_responses: &[Self::PrfOutput],
         ciphertext: &Self::Ciphertext,
     ) -> Result<Self::SecretKey, Error> {
         
         let mut shares = Vec::new();
-        for (i, (server_pk, server_output)) in server_responses.iter().enumerate() {
+        for (i, server_output) in server_responses.iter().enumerate() {
             let prf_output: G1Affine = server_output.blinded_prf_output.mul(&state.blind_scalar.inverse().unwrap()).into();
             // e := H(password || prf_output);
             let mask_i = hash_to_fr(
@@ -250,7 +247,7 @@ fn evaluate_prf(
     seed: &[u8; 32],
     client_id: &[u8],
     input: &PrfInput<G1Projective>
-) -> Result<(PublicKey<G1Projective>, PrfOutput<G1Projective>), Error> {
+) -> Result<PrfOutput<G1Projective>, Error> {
     let (client_secret_key, client_public_key) = {
         // TODO: do proper HKDF here. For now, Hash seed and client_id.
         // k := H(seed || client_id);
@@ -267,8 +264,9 @@ fn evaluate_prf(
 
     let prf_output = PrfOutput {
         blinded_prf_output: input.blinded_prf_input.mul(&client_secret_key).into(),
+        public_key: client_public_key,
     };
-    Ok((client_public_key, prf_output))
+    Ok(prf_output)
 }
 
 const DST_G1: &str = "BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_";
