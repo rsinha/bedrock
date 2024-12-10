@@ -34,8 +34,8 @@ fn main() {
         .get_matches();
 
     // Get the values of the arguments
-    let mode = matches.get_one::<String>("mode").unwrap();
-    let pin = matches.get_one::<String>("pincode").unwrap();
+    let mode = matches.get_one::<String>("mode").expect("invalid args: mode is required");
+    let pin = matches.get_one::<String>("pincode").expect("invalid args: pincode is required");
 
     let vault_path = get_vault_path();
 
@@ -54,19 +54,15 @@ fn main() {
             println!("Recovered secret: {:?}", String::from_utf8(recovered_secret).unwrap());
         },
         "init" => {
-            let secret = matches.get_one::<String>("secret");
-            if secret.is_none() {
-                panic!("ERROR: secret is required for initialization");
-            }
+            let secret = matches.get_one::<String>("secret").expect("invalid args: secret is required");
 
             println!("Creating a vault with pincode {}", pin);
             let client = bedrock_vault::BedrockClient::new(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt", 
                 "alice@gmail.com"
             );
-            let password = pin.as_bytes();
-            let secret = secret.unwrap().as_bytes();
-            let vault_data = client.initialize(password, secret).unwrap();
+
+            let vault_data = client.initialize(pin.as_bytes(), secret.as_bytes()).unwrap();
             fs::write(vault_path, vault_data).expect("Failed to write vault file");
         },
         _ => unreachable!(), // This won't happen due to value_parser restriction
