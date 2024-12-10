@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+message Vault {
+  string owner = 1;
+  bytes kem_ciphertext = 2;
+  bytes dem_ciphertext = 3;
+}

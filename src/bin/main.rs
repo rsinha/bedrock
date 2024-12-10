@@ -1,9 +1,12 @@
 use clap::{Command, Arg, value_parser};
+use protobuf::Message;
 use std::{fs, path::PathBuf};
 
+include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
+use vault::Vault;
+
 const VAULT_DIR_NAME: &str = ".bedrock";
-const VAULT_KEM_CTXT_FILENAME : &str = "kem_ctxt";
-const VAULT_DEM_CTXT_FILENAME : &str = "dem_ctxt";
+const VAULT_FILE_NAME : &str = "vault";
 
 fn main() {
     let matches = Command::new("Vault")
@@ -38,18 +41,19 @@ fn main() {
     let mode = matches.get_one::<String>("mode").unwrap();
     let pin = matches.get_one::<String>("pincode").unwrap();
 
-    let (kem_path, dem_path) = get_vault_directory();
+    let vault_path = get_vault_path();
+    //read the vault file
+    let vault = fs::read(vault_path).expect("Failed to read vault file");
 
     // Process based on the mode
     match mode.as_str() {
         "reload" => {
             println!("Reloading secret from vault using pincode {}", pin);
             let client = bedrock_vault::BedrockClient::new(
-                "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt", 
-                &kem_path,
-                &dem_path
+                "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt",
+                "alice@gmail.com",
             );
-            let recovered_secret = client.recover(pin.as_bytes()).unwrap();
+            let recovered_secret = client.recover(vault, pin.as_bytes()).unwrap();
             println!("Recovered secret: {:?}", String::from_utf8(recovered_secret).unwrap());
         },
         "init" => {
@@ -61,8 +65,7 @@ fn main() {
             println!("Creating a vault with pincode {}", pin);
             let client = bedrock_vault::BedrockClient::new(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt", 
-                &kem_path,
-                &dem_path
+                "alice@gmail.com"
             );
             let password = pin.as_bytes();
             let secret = secret.unwrap().as_bytes();
@@ -72,7 +75,7 @@ fn main() {
     }
 }
 
-pub fn get_vault_directory() -> (PathBuf, PathBuf) {
+pub fn get_vault_path() -> PathBuf {
         // Get the user's home directory
         let home_dir = directories::BaseDirs::new().unwrap().home_dir().to_path_buf();
     
@@ -88,11 +91,6 @@ pub fn get_vault_directory() -> (PathBuf, PathBuf) {
         } else {
             println!("Directory already exists at: {:?}", app_dir);
         }
-
-        let kem_path = app_dir.join(VAULT_KEM_CTXT_FILENAME);
-        println!("KEM ciphertext location: {:?}", kem_path);
-        let dem_path = app_dir.join(VAULT_DEM_CTXT_FILENAME);
-        println!("DEM ciphertext location: {:?}", dem_path);
         
-        return (kem_path, dem_path);
+        app_dir.join(VAULT_FILE_NAME)
 }
