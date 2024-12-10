@@ -1,9 +1,5 @@
 use clap::{Command, Arg, value_parser};
-use protobuf::Message;
 use std::{fs, path::PathBuf};
-
-include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
-use vault::Vault;
 
 const VAULT_DIR_NAME: &str = ".bedrock";
 const VAULT_FILE_NAME : &str = "vault";
@@ -42,12 +38,13 @@ fn main() {
     let pin = matches.get_one::<String>("pincode").unwrap();
 
     let vault_path = get_vault_path();
-    //read the vault file
-    let vault = fs::read(vault_path).expect("Failed to read vault file");
 
     // Process based on the mode
     match mode.as_str() {
         "reload" => {
+            //read the vault file
+            let vault = fs::read(&vault_path)
+                .expect(format!("Failed to read vault file at {:?}", vault_path).as_str());
             println!("Reloading secret from vault using pincode {}", pin);
             let client = bedrock_vault::BedrockClient::new(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt",
@@ -69,7 +66,8 @@ fn main() {
             );
             let password = pin.as_bytes();
             let secret = secret.unwrap().as_bytes();
-            client.initialize(password, secret).unwrap();
+            let vault_data = client.initialize(password, secret).unwrap();
+            fs::write(vault_path, vault_data).expect("Failed to write vault file");
         },
         _ => unreachable!(), // This won't happen due to value_parser restriction
     }
