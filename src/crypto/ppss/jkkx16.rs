@@ -158,7 +158,7 @@ impl PpssPcheme for JKKX16
         let mut encrypted_shares = Vec::new();
         for (i, server_output) in server_responses.iter().enumerate() {
             let prf_output: G1Affine = server_output.blinded_prf_output
-                .mul(&state.blind_scalar.inverse().unwrap())
+                .mul(&state.blind_scalar.inverse().expect("blind should not be zero"))
                 .into();
 
             // e := H(password || prf_output);
@@ -233,7 +233,9 @@ impl PpssPcheme for JKKX16
         
         let mut shares = Vec::new();
         for (i, server_output) in server_responses.iter().enumerate() {
-            let prf_output: G1Affine = server_output.blinded_prf_output.mul(&state.blind_scalar.inverse().unwrap()).into();
+            let prf_output: G1Affine = server_output.blinded_prf_output
+                .mul(&state.blind_scalar.inverse().expect("blind should not be zero"))
+                .into();
 
             // e := H(password || prf_output);
             let mask_i = hash_to_fr(
@@ -281,12 +283,17 @@ fn oprf_input<R: Rng>(
     // hash the password to a group element
     let password_hash: Affine::<G1Config> = hash_to_g1point(&password.to_vec())?;
 
-    let random_scalar = Fr::rand(rng);
-    let blinded_prf_input = password_hash.mul(&random_scalar).into();
+    // sample a non-zero random scalar
+    let mut blind = Fr::zero();
+    while blind.is_zero() {
+        blind = Fr::rand(rng);
+    }
+
+    let blinded_prf_input = password_hash.mul(&blind).into();
 
     let input = PrfInput { blinded_prf_input, client_id: client_id.to_vec() };
 
-    Ok((random_scalar, input))
+    Ok((blind, input))
 }
 
 fn evaluate_prf(

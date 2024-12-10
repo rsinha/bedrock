@@ -23,5 +23,7 @@ pub fn lagrange_coefficient<F: Field>(xs: &[F], i: usize, x: &F) -> F {
             denominator *= xi - xj;
         }
     }
-    numerator * denominator.inverse().unwrap()
+    numerator * denominator
+    .inverse()
+    .expect("denominator in lagrange interpolation should not be zero")
 }
