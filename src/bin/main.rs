@@ -4,7 +4,8 @@ use std::{fs, path::PathBuf};
 const VAULT_DIR_NAME: &str = ".bedrock";
 const VAULT_FILE_NAME : &str = "vault";
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = Command::new("Vault")
         .version("1.0")
         .about("A simple vault application that allows you to store and retrieve secrets")
@@ -46,30 +47,30 @@ fn main() {
             let vault = fs::read(&vault_path)
                 .expect(format!("Failed to read vault file at {:?}", vault_path).as_str());
             println!("Reloading secret from vault using pincode {}", pin);
-            let client = bedrock_vault::BedrockClient::new(
+            let client = bedrock_vault::BedrockClient::new_debug(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt",
                 "alice@gmail.com",
             );
-            let recovered_secret = client.recover(vault, pin.as_bytes()).unwrap();
+            let recovered_secret = client.recover(vault, pin.as_bytes()).await.unwrap();
             println!("Recovered secret: {:?}", String::from_utf8(recovered_secret).unwrap());
         },
         "init" => {
             let secret = matches.get_one::<String>("secret").expect("invalid args: secret is required");
 
             println!("Creating a vault with pincode {}", pin);
-            let client = bedrock_vault::BedrockClient::new(
+            let client = bedrock_vault::BedrockClient::new_debug(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt", 
                 "alice@gmail.com"
             );
 
-            let vault_data = client.initialize(pin.as_bytes(), secret.as_bytes()).unwrap();
+            let vault_data = client.initialize(pin.as_bytes(), secret.as_bytes()).await.unwrap();
             fs::write(vault_path, vault_data).expect("Failed to write vault file");
         },
         _ => unreachable!(), // This won't happen due to value_parser restriction
     }
 }
 
-pub fn get_vault_path() -> PathBuf {
+fn get_vault_path() -> PathBuf {
         // Get the user's home directory
         let home_dir = directories::BaseDirs::new().unwrap().home_dir().to_path_buf();
     
