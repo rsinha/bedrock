@@ -47,7 +47,7 @@ async fn main() {
             let vault = fs::read(&vault_path)
                 .expect(format!("Failed to read vault file at {:?}", vault_path).as_str());
             println!("Reloading secret from vault using pincode {}", pin);
-            let client = bedrock_vault::BedrockClient::new_debug(
+            let client = bedrock::BedrockClient::new_debug(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt",
                 "alice@gmail.com",
             );
@@ -58,7 +58,7 @@ async fn main() {
             let secret = matches.get_one::<String>("secret").expect("invalid args: secret is required");
 
             println!("Creating a vault with pincode {}", pin);
-            let client = bedrock_vault::BedrockClient::new_debug(
+            let client = bedrock::BedrockClient::new_debug(
                 "https://zkbricks-vault-worker.rohit-fd0.workers.dev/decrypt", 
                 "alice@gmail.com"
             );
